@@ -2,4 +2,3 @@ Flask
 torch
 opencv-python-headless
 numpy
-git+https://github.com/ultralytics/yolov5.git
