@@ -1,18 +1,36 @@
 from flask import Flask, request, jsonify
-from ultralytics import YOLO
-import cv2
+import torch
+from yolov5 import YOLOv5
 import numpy as np
+import cv2
+import os
 
 app = Flask(__name__)
-model = YOLO("best.pt")
+
+# Load YOLOv5 model
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "best.pt")
+yolo = YOLOv5(MODEL_PATH, device="cpu")
+
+@app.route("/")
+def home():
+    return "YOLOv5 API is running."
 
 @app.route("/detect", methods=["POST"])
 def detect():
-    file = request.files['image']
-    img = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_COLOR)
+    if "image" not in request.files:
+        return jsonify({"error": "No image uploaded."}), 400
 
-    results = model(img)
-    detections = results[0].boxes.data.tolist()
+    file = request.files["image"]
+    img_bytes = file.read()
+
+    # Convert to OpenCV image
+    img = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR)
+
+    # YOLOv5 inference
+    results = yolo.predict(img, size=640)
+
+    # Convert results
+    detections = results.pandas().xyxy[0].to_dict(orient="records")
 
     return jsonify({"detections": detections})
 
